@@ -1,5 +1,9 @@
 <?php
 class Superb {
+   private static $empty_tags = array(
+      'br', 'hr', 'img', 'input', 'link', 'meta'
+   );
+   
    private $children = array();
    private $name;
    private $attrs = array();
@@ -7,7 +11,7 @@ class Superb {
    public function __construct($name, $inner = null) {
       $this->name = $name;
       if($inner !== null) {
-         $this->attrs['inner'] = $inner;
+         $this->attrs['%inner'] = $inner;
       }
    }
    
@@ -19,18 +23,22 @@ class Superb {
       $this->attrs[$attr] = $val;
    }
    
+   private function get($attr, $default = false) {
+      return isset($this->attrs[$attr]) ? $this->attrs[$attr] : $default;
+   }
+   
    public function as_string($indent = "") {
-      $new_indent = $indent . "   ";
+      $new_indent = $this->get('%indent', true) ? $indent . "   " : '';
       
       if($this->name == 'raw') {
-         return $this->attrs['inner'];
-      } else if(array_key_exists($this->name, array_fill_keys(array('br', 'input', 'img', 'hr', 'input', 'meta'), true))) {
-         /* ^ very awkward, need some sort of static variable to do this,
-            but static variables can't be directly initialized to array_fill_keys(...).
-            If using normal array, need to use in_array, which is O(n) as opposed to O(1) */
+         return $this->attrs['%inner'];
+      } else if(in_array($this->name, self::$empty_tags)) {
+         /* TODO: use array_key_exist instead of in_array */
          $attribs = "";
          foreach($this->attrs as $attr => $val) {
-            $attribs .= " " . $attr . "='" . $val . "'";
+            if($attr[0] != "%") {
+               $attribs .= " " . $attr . "='" . $val . "'";
+            }
          }
          
          return "<" . $this->name . $attribs . " />";
@@ -45,14 +53,18 @@ class Superb {
                $inner = $this->children[0]->as_string($new_indent);
             } else {
                foreach($this->children as $child) {
-                  $inner .= "\n" . $new_indent . $child->as_string($new_indent);
+                  $inner .= "\n" . $new_indent . ($this->get('%entity') ? 
+                     htmlentities($child->as_string($new_indent)) : $child->as_string($new_indent));
                }
                $inner .= "\n" . $indent;
             }
          }
          
          foreach($this->attrs as $attr => $val) {
-            $attribs .= " " . $attr . "='" . $val . "'";
+            /* ignore Superb specific attributes */
+            if($attr[0] != "%") {
+               $attribs .= " " . $attr . "='" . $val . "'";
+            }
          }
          
          return "<" . $this->name . $attribs . ">" . $inner . 
@@ -66,14 +78,20 @@ class Superb {
 }
 
 class Sp {
+   private static $aliases = array(
+      'css' => array('%name' => 'link', 'rel' => 'stylesheet', 'type' => 'text/css', 'href' => null),
+      'js' => array('%name' => 'script', 'type' => 'text/javascript', 'src' => null)
+   );
+   
    private $top_level_su = array();
    
    public function get_top_su() {
       return $this->top_level_su;
    }
    
-   public static function parse_options($su, $options) {
+   public static function parse_options($su, $options, $default = '') {
       foreach($options as $attr => $val) {
+         if($val == '') $val = $default;
          $su->set($attr, $val);
       }
       return $su;
@@ -107,11 +125,11 @@ class Sp {
                }
             } else if(is_string($arg)) {
                /* treat as a Sp::raw tag */
-               if($name == 'raw') $su->set('inner', $arg);
+               if($name == 'raw') $su->set('%inner', $arg);
                else $su_children[] = new Superb('raw', $arg);
             } else if(is_array($arg)) {
                /* optional attributes */
-               $su = self::parse_options($su, $options);
+               $su = self::parse_options($su, $arg);
             }
          }
          
@@ -128,13 +146,20 @@ class Sp {
    
    /* triggered when something like $sp->table() is called. */
    public function __call($name, $args) {
-      return $this->parse_args($name, $args, true);
+      if(isset(self::$aliases[$name]) && count($args)) {
+         $su = self::parse_options(new Superb(self::$aliases[$name]['%name']), self::$aliases[$name], $args[0]);
+         if(isset($args[1]) && is_array($args[1])) {
+            $su = self::parse_options($su, $arg);
+         }
+         return $su;
+      } else {
+         return $this->parse_args($name, $args, true);
+      }
    }
    
    // triggered when something like Sp::table() is called
    public static function __callStatic($name, $args) {
       $sp = new Sp($name);
-      return $sp->parse_args($name, $args);
+      return $sp->__call($name, $args);
    }
 }
-?>

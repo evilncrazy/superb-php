@@ -7,18 +7,18 @@ Generate nicely formatted HTML using PHP.
 include('superb.php');
 
 echo
-Sp::div(
+Sp::div(array('class' => 'container'),
    Sp::h1('Hi there!'),
    Sp::p('This is ', Sp::b('superb'), '!')
 );
 ```
 
 ```html
-<div>
+<div class='container'>
    <h1>Hi there!</h1>
    <p>
-      This is 
-      <b>superb</b>
+      This is
+      <b>Superb</b>
       !
    </p>
 </div>
