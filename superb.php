@@ -35,7 +35,7 @@ class Superb {
       $new_indent = $this->get('%indent', true) ? $indent . "   " : '';
       
       if($this->name == 'raw') {
-         return $this->attrs['%inner'];
+         return $this->get('%entity', true) ? htmlentities($this->attrs['%inner']) : $this->attrs['%inner'];
       } else {
          $inner = "";
          $attribs = "";
