@@ -7,6 +7,7 @@ class Superb {
    private $children = array();
    private $name;
    private $attrs = array();
+   private $format;
    
    public function __construct($name, $inner = null) {
       $this->name = $name;
@@ -31,8 +32,28 @@ class Superb {
       return in_array($this->name, self::$empty_tags);
    }
    
+   private function is_trivial() {
+      return $this->is_empty_tag() || $this->name == 'raw' || count($this->children) == 0 || 
+             (count($this->children) == 1 && $this->children[0]->name == 'raw');
+   }
+   
+   private function get_format() {
+      /* a tag is inline if it has only trivial children */
+      if(isset($this->format)) return $this->format;
+      if($this->is_trivial()) return $this->format = 'inline';
+      
+      $all_tags = true;
+      foreach($this->children as $child) {
+         if(!$child->is_trivial() || $child->get_format() == 'block') return $this->format = 'block';
+         if($child->name == 'raw') $all_tags = false;
+      }
+      
+      if($all_tags) return $this->format = 'block';
+      return $this->format = 'inline';
+   }
+   
    public function as_string($indent = "") {
-      $new_indent = $this->get('%indent', true) ? $indent . "   " : '';
+      $new_indent = $this->get('%indent', true) ? $indent . "  " : '';
       
       if($this->name == 'raw') {
          return $this->get('%entity', true) ? htmlentities($this->attrs['%inner']) : $this->attrs['%inner'];
@@ -43,23 +64,18 @@ class Superb {
          $attribs = "";
 
          if(count($this->children) && !$this->is_empty_tag()) {
-            if(count($this->children) == 1 && $this->children[0]->name == 'raw') {
-               /* if the only child is a raw, then we want to inline this.
-                  TODO: in the future, should have more flexibile inline system */
-               $inner = $this->children[0]->as_string($new_indent);
-            } else {
-               foreach($this->children as $child) {
-                  $inner .= "\n" . $new_indent . ($this->get('%entity') ? 
-                     htmlentities($child->as_string($new_indent)) : $child->as_string($new_indent));
-               }
-               $inner .= "\n" . $indent;
+            foreach($this->children as $child) {
+               $inner .= ($this->get_format() == 'block' ? "\n" . $new_indent : '') . 
+                         ($this->get('%entity') ? 
+                           htmlentities($child->as_string($new_indent)) : $child->as_string($new_indent));
             }
+            $inner .= ($this->get_format() == 'block' ? "\n" . $indent : '');
          }
          
          foreach($this->attrs as $attr => $val) {
             /* ignore Superb specific attributes */
             if(!is_null($val) && $attr[0] != "%") {
-               $attribs .= " " . $attr . "='" . $val . "'";
+               $attribs .= ' ' . $attr . '="' . $val . '"';
             }
          }
          
