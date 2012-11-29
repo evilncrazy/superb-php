@@ -103,12 +103,13 @@ class Sp {
             if(is_a($arg, 'Superb')) {
                $su_children[] = $arg;
                
-               /* now, since these Superb objects are now children
-                  of this Superb object, we must remove them from top_level_su
-                  as they are no longer 'top level' */
+               /* since $arg is now a child of this Superb object, 
+                  we must remove it from top_level_su as it is no longer 'top level' */
                if(($key = array_search($arg, $this->top_level_su)) !== false) {
                    unset($this->top_level_su[$key]);
                }
+            } else if(is_a($arg, 'Sp')) {
+               $su_children = array_merge($su_children, $arg->get_top_su());
             } else if(is_callable($arg)) {
                /* given a function, so call it with a new Superb object as parameter */
                call_user_func($arg, ($sp = new Sp()));
