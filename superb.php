@@ -40,7 +40,7 @@ class Superb {
          $inner = "";
          $attribs = "";
 
-         if(count($this->children) && !this->is_empty_tag()) {
+         if(count($this->children) && !$this->is_empty_tag()) {
             if(count($this->children) == 1 && $this->children[0]->name == 'raw') {
                /* if the only child is a raw, then we want to inline this.
                   TODO: in the future, should have more flexibile inline system */
@@ -112,7 +112,7 @@ class Sp {
             } else if(is_callable($arg)) {
                /* given a function, so call it with a new Superb object as parameter */
                call_user_func($arg, ($sp = new Sp()));
-               if($sp && is_a($sp, 'Superb')) {
+               if($sp && is_a($sp, 'Sp')) {
                   /* add any markup created by the Superb object passed to the function */
                   $su_children = array_merge($su_children, $sp->get_top_su());
                }
