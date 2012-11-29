@@ -36,6 +36,8 @@ class Superb {
       
       if($this->name == 'raw') {
          return $this->get('%entity', true) ? htmlentities($this->attrs['%inner']) : $this->attrs['%inner'];
+      } else if($this->name == 'comment') {
+         return "<!-- " . $this->attrs['%inner'] . " -->";
       } else {
          $inner = "";
          $attribs = "";
@@ -119,7 +121,7 @@ class Sp {
                }
             } else if(is_string($arg)) {
                /* treat as a Sp::raw tag */
-               if($name == 'raw') $su->set('%inner', $arg);
+               if($name == 'raw' || $name == 'comment') $su->set('%inner', $arg);
                else $su_children[] = new Superb('raw', $arg);
             } else if(is_array($arg)) {
                /* optional attributes */
