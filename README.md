@@ -7,21 +7,33 @@ Generate nicely formatted HTML using PHP.
 include('superb.php');
 
 echo
-Sp::div(array('class' => 'container'),
-   Sp::h1('Hi there!'),
-   Sp::p('This is ', Sp::b('superb'), '!')
+Sp::html(
+   Sp::head(
+      Sp::comment('Load the CSS file'),
+      Sp::css('style.css')
+   ),
+   Sp::body(
+      Sp::div(array('class' => 'container'),
+         Sp::h1('Hi there!'),
+         Sp::span('This is ', Sp::b('superb'), '!')
+      )
+   )
 );
 ```
 
 ```html
-<div class='container'>
-   <h1>Hi there!</h1>
-   <p>
-      This is
-      <b>Superb</b>
-      !
-   </p>
-</div>
+<html>
+  <head>
+    <!-- Load the CSS file -->
+    <link rel="stylesheet" type="text/css" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Hi there!</h1>
+      <span>This is <b>superb</b>!</span>
+    </div>
+  </body>
+</html>
 ```
 
 Basic Usage
