@@ -27,26 +27,20 @@ class Superb {
       return isset($this->attrs[$attr]) ? $this->attrs[$attr] : $default;
    }
    
+   private function is_empty_tag() {
+      return in_array($this->name, self::$empty_tags);
+   }
+   
    public function as_string($indent = "") {
       $new_indent = $this->get('%indent', true) ? $indent . "   " : '';
       
       if($this->name == 'raw') {
          return $this->attrs['%inner'];
-      } else if(in_array($this->name, self::$empty_tags)) {
-         /* TODO: use array_key_exist instead of in_array */
-         $attribs = "";
-         foreach($this->attrs as $attr => $val) {
-            if($attr[0] != "%") {
-               $attribs .= " " . $attr . "='" . $val . "'";
-            }
-         }
-         
-         return "<" . $this->name . $attribs . " />";
       } else {
          $inner = "";
          $attribs = "";
 
-         if(count($this->children)) {
+         if(count($this->children) && !this->is_empty_tag()) {
             if(count($this->children) == 1 && $this->children[0]->name == 'raw') {
                /* if the only child is a raw, then we want to inline this.
                   TODO: in the future, should have more flexibile inline system */
@@ -62,13 +56,13 @@ class Superb {
          
          foreach($this->attrs as $attr => $val) {
             /* ignore Superb specific attributes */
-            if($attr[0] != "%") {
+            if(!is_null($val) && $attr[0] != "%") {
                $attribs .= " " . $attr . "='" . $val . "'";
             }
          }
          
-         return "<" . $this->name . $attribs . ">" . $inner . 
-                "</" . $this->name . ">";
+         if($this->is_empty_tag()) return "<" . $this->name . $attribs . " />";
+         else return "<" . $this->name . $attribs . ">" . $inner . "</" . $this->name . ">";
       }
    }
    
@@ -91,7 +85,7 @@ class Sp {
    
    public static function parse_options($su, $options, $default = '') {
       foreach($options as $attr => $val) {
-         if($val == '') $val = $default;
+         if(empty($val)) $val = $default;
          $su->set($attr, $val);
       }
       return $su;
@@ -117,9 +111,8 @@ class Sp {
                }
             } else if(is_callable($arg)) {
                /* given a function, so call it with a new Superb object as parameter */
-               $sp = new Sp();
-               call_user_func($arg, $sp);
-               if($sp) {
+               call_user_func($arg, ($sp = new Sp()));
+               if($sp && is_a($sp, 'Superb')) {
                   /* add any markup created by the Superb object passed to the function */
                   $su_children = array_merge($su_children, $sp->get_top_su());
                }
