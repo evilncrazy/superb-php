@@ -38,6 +38,29 @@ What can go in the brackets?
 
 Remember to echo the markup, as they are returned as a string. Enjoy!
 
+Function Parameters
+===================
+
+If a function is given as a parameter, you'll be given a Sp instance to generate markup, like so:
+
+```php
+Sp::ul(function($sp) {
+   foreach(array('A', 'B', 'C') as $char) {
+      $sp->li($char);
+   }
+});
+```
+
+```html
+<ul>
+   <li>A</li>
+   <li>B</li>
+   <li>C</li>
+</ul>
+```
+
+This allows you to write logic without breaking the flow of markup.
+
 Aliases
 =======
 
