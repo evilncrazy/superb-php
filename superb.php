@@ -28,18 +28,15 @@ class Superb {
       return isset($this->attrs[$attr]) ? $this->attrs[$attr] : $default;
    }
    
-   private function is_empty_tag() {
-      return in_array($this->name, self::$empty_tags);
-   }
-   
    private function is_trivial() {
-      return $this->is_empty_tag() || $this->name == 'raw' || count($this->children) == 0 || 
+      return $this->name == 'raw' || count($this->children) == 0 || 
              (count($this->children) == 1 && $this->children[0]->name == 'raw');
    }
    
    private function get_format() {
       /* a tag is inline if it has only trivial children */
       if(isset($this->format)) return $this->format;
+      if(in_array($this->name, self::$empty_tags)) return $this->format = 'empty';
       if($this->is_trivial()) return $this->format = 'inline';
       
       $all_tags = true;
@@ -63,7 +60,7 @@ class Superb {
          $inner = "";
          $attribs = "";
 
-         if(count($this->children) && !$this->is_empty_tag()) {
+         if(count($this->children) && $this->get_format() != 'empty') {
             foreach($this->children as $child) {
                $inner .= ($this->get_format() == 'block' ? "\n" . $new_indent : '') . 
                          ($this->get('%entity') ? 
@@ -79,7 +76,7 @@ class Superb {
             }
          }
          
-         if($this->is_empty_tag()) return "<" . $this->name . $attribs . " />";
+         if($this->get_format() == 'empty') return "<" . $this->name . $attribs . " />";
          else return "<" . $this->name . $attribs . ">" . $inner . "</" . $this->name . ">";
       }
    }
