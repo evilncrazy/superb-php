@@ -5,15 +5,18 @@ class Superb {
    );
    
    private $children = array();
-   private $name;
    private $attrs = array();
    private $format;
    
    public function __construct($name, $inner = null) {
-      $this->name = $name;
+      $this->attrs['%name'] = $name;
       if($inner !== null) {
          $this->attrs['%inner'] = $inner;
       }
+   }
+   
+   public function get_name() {
+      return $this->attrs['%name'];
    }
    
    public function add($child) {
@@ -29,20 +32,20 @@ class Superb {
    }
    
    private function is_trivial() {
-      return $this->name == 'raw' || count($this->children) == 0 || 
-             (count($this->children) == 1 && $this->children[0]->name == 'raw');
+      return $this->get_name() == 'text' || count($this->children) == 0 || 
+             (count($this->children) == 1 && $this->children[0]->get_name() == 'text');
    }
    
    private function get_format() {
       /* a tag is inline if it has only trivial children */
       if(isset($this->format)) return $this->format;
-      if(in_array($this->name, self::$empty_tags)) return $this->format = 'empty';
+      if(in_array($this->get_name(), self::$empty_tags)) return $this->format = 'empty';
       if($this->is_trivial()) return $this->format = 'inline';
       
       $all_tags = true;
       foreach($this->children as $child) {
          if(!$child->is_trivial() || $child->get_format() == 'block') return $this->format = 'block';
-         if($child->name == 'raw') $all_tags = false;
+         if($child->get_name() == 'text') $all_tags = false;
       }
       
       if($all_tags) return $this->format = 'block';
@@ -52,9 +55,9 @@ class Superb {
    public function as_string($indent = "") {
       $new_indent = $this->get('%indent', true) ? $indent . "  " : '';
       
-      if($this->name == 'raw') {
+      if($this->get_name() == 'text') {
          return $this->get('%entity', true) ? htmlentities($this->attrs['%inner']) : $this->attrs['%inner'];
-      } else if($this->name == 'comment') {
+      } else if($this->get_name() == 'comment') {
          return "<!-- " . $this->attrs['%inner'] . " -->";
       } else {
          $inner = "";
@@ -76,8 +79,8 @@ class Superb {
             }
          }
          
-         if($this->get_format() == 'empty') return "<" . $this->name . $attribs . " />";
-         else return "<" . $this->name . $attribs . ">" . $inner . "</" . $this->name . ">";
+         if($this->get_format() == 'empty') return "<" . $this->get_name() . $attribs . " />";
+         else return "<" . $this->get_name() . $attribs . ">" . $inner . "</" . $this->get_name() . ">";
       }
    }
    
@@ -90,6 +93,7 @@ class Sp {
    private static $aliases = array(
       'css' => array('%name' => 'link', 'rel' => 'stylesheet', 'type' => 'text/css', 'href' => null),
       'js' => array('%name' => 'script', 'type' => 'text/javascript', 'src' => null),
+      'tag' => array('%name' => null)
    );
    
    private $top_level_su = array();
@@ -133,9 +137,9 @@ class Sp {
                   $su_children = array_merge($su_children, $sp->get_top_su());
                }
             } else if(is_string($arg)) {
-               /* treat as a Sp::raw tag */
-               if($name == 'raw' || $name == 'comment') $su->set('%inner', $arg);
-               else $su_children[] = new Superb('raw', $arg);
+               /* treat as a Sp::text tag */
+               if($name == 'text' || $name == 'comment') $su->set('%inner', $arg);
+               else $su_children[] = new Superb('text', $arg);
             } else if(is_array($arg)) {
                /* optional attributes */
                $su = self::parse_options($su, $arg);
