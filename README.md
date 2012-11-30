@@ -15,7 +15,7 @@ Sp::html(
    Sp::body(
       Sp::div(array('class' => 'container'),
          Sp::h1('Hi there!'),
-         Sp::span('This is ', Sp::b('superb'), '!')
+         Sp::t('span .alert', 'This is ', Sp::b('superb'), '!')
       )
    )
 );
@@ -30,7 +30,7 @@ Sp::html(
   <body>
     <div class="container">
       <h1>Hi there!</h1>
-      <span>This is <b>superb</b>!</span>
+      <span class="alert">This is <b>superb</b>!</span>
     </div>
   </body>
 </html>
