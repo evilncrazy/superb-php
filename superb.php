@@ -54,22 +54,30 @@ class Superb {
       return $this->format = 'inline';
    }
    
+   public function get_inner() {
+      /* output escaping */
+      $inner = $this->attrs['%inner'];
+      if($this->get_name() == 'text') {
+         if($this->get('%entity', false)) $inner = htmlentities($inner);
+         if($this->get('%escape', true)) $inner = htmlspecialchars($inner);
+         if($this->get('%trim', false)) $inner = trim($inner);
+      }
+      return $inner;
+   }
+   
    public function as_string($indent = "") {
-      $new_indent = $this->get('%indent', true) ? $indent . "  " : '';
+      $new_indent = $this->get('%indent', true) ? $indent . '  ' : '';
       
       if($this->get_name() == 'text') {
-         return $this->get('%entity', true) ? htmlentities($this->attrs['%inner']) : $this->attrs['%inner'];
+         return $this->get_inner();
       } else if($this->get_name() == 'comment') {
-         return "<!-- " . $this->attrs['%inner'] . " -->";
+         return "<!-- " . $this->get_inner() . " -->";
       } else {
-         $inner = "";
-         $attribs = "";
+         $inner = $attribs = '';
 
          if(count($this->children) && $this->get_format() != 'empty') {
             foreach($this->children as $child) {
-               $inner .= ($this->get_format() == 'block' ? "\n" . $new_indent : '') . 
-                         ($this->get('%entity') ? 
-                           htmlentities($child->as_string($new_indent)) : $child->as_string($new_indent));
+               $inner .= ($this->get_format() == 'block' ? "\n" . $new_indent : '') . $child->as_string($new_indent);
             }
             $inner .= ($this->get_format() == 'block' ? "\n" . $indent  : '');
          }
@@ -86,29 +94,6 @@ class Superb {
       }
    }
    
-   public function each($iterable, $iterator) {
-      /* check if iterable (does not work in all cases):
-         http://stackoverflow.com/questions/3584700/iterable-objects-and-array-type-hinting/ */
-      $this->last_return = false;
-      if((is_array($iterable) || is_a($iterable, 'Traversable')) && is_callable($iterator)) {
-         foreach($iterable as $item) {
-            if(call_user_func($iterator, ($sp = new Sp()), $item) !== false) {
-               $this->add($sp->get_top_su());
-               $this->last_return = true;
-            }
-         }
-      }
-      return $this;
-   }
-   
-   public function els($func) {
-      if($this->last_return == false && call_user_func($func, ($sp = new Sp())) !== false) {
-         $this->add($sp->get_top_su());
-         $this->last_return = true;
-      } else $this->last_return = false;
-      return $this;
-   }
-   
    public function __toString() {
       return $this->as_string() . "\n";
    }
@@ -117,7 +102,16 @@ class Superb {
 class Sp {
    private static $aliases = array(
       'css' => array('%name' => 'link', 'rel' => 'stylesheet', 'type' => 'text/css', 'href' => null),
-      'js' => array('%name' => 'script', 'type' => 'text/javascript', 'src' => null)
+      'js' => array('%name' => 'script', 'type' => 'text/javascript', 'src' => null),
+      'field' => array('%name' => 'input', 'type' => null),
+      'ftext' => array('%name' => 'input', 'type' => 'text', 'name' => null),
+      'flabel' => array('%name' => 'label', 'for' => null),
+      'fpassword' => array('%name' => 'input', 'type' => 'password', 'name' => null),
+      'fhidden' => array('%name' => 'input', 'type' => 'hidden', 'value' => null),
+      'ftextarea' => array('%name' => 'textarea', 'name' => null),
+      'fcheckbox' => array('%name' => 'input', 'type' => 'checkbox', 'name' => null),
+      'fradio' => array('%name' => 'input', 'type' => 'radio', 'name' => null),
+      'fsubmit' => array('%name' => 'input', 'type' => 'submit', 'value' => null),
    );
    
    private $top_level_su = array();
@@ -145,8 +139,7 @@ class Sp {
             
             /* since $arg is now a child of this Superb object, 
                we must remove it from top_level_su as it is no longer 'top level' */
-            if(($key = array_search($arg, $this->top_level_su)) !== false)
-                unset($this->top_level_su[$key]);
+            if(($key = array_search($arg, $this->top_level_su)) !== false) unset($this->top_level_su[$key]);
          } else if(is_a($arg, 'Sp')) {
             $su->add($arg->get_top_su());
          } else if(is_callable($arg)) {
@@ -156,7 +149,7 @@ class Sp {
                $su->add($sp->get_top_su());
             }
          } else if(is_string($arg)) {
-            /* treat as a Sp::text tag */
+            /* treat raw strings as a Sp::text tag */
             if($name == 'text' || $name == 'comment') $su->set('%inner', $arg);
             else $su->add(new Superb('text', $arg));
          } else if(is_array($arg)) {
@@ -176,17 +169,18 @@ class Sp {
          /* use the first arg as parameter of the alias, then parse the su object as normal */
          return $this->parse_args('', array_slice($args, 1),
             self::parse_options(new Superb(''),  self::$aliases[$name], $args[0]));
-      } else if($name == 't') {
-         /* need to parse: tag, tag #id, tag .class1 .class2, tag #id .class */
+      } else if($name == 't' && count($args)) {
+         /* need to parse: tag, #id, .class, [name] */
          $chunks = explode(' ', $args[0]);
-         $su = new Superb($chunks[0]);
+         $su = new Superb('div'); /* div by default */
          foreach($chunks as $chunk) {
             if($chunk[0] == '.') $su->set('class', $su->get('class', '') . substr($chunk, 1));
             else if($chunk[0] == '#') $su->set('id', substr($chunk, 1));
+            else if($chunk[0] == '[' && substr($chunk, -1) == ']') $su->set('name', substr($chunk, 1, -1));
+            else if(ctype_alpha($chunk)) $su->set('%name', $chunk);
          }
          return $this->parse_args($chunks[0], array_slice($args, 1), $su);
       }
-      
       return $this->parse_args($name, $args);
    }
    
